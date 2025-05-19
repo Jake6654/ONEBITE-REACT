@@ -2,7 +2,7 @@ import './App.css';
 import List from './components/List';
 import Editor from './components/Editor';
 import Header from './components/Header';
-import {useState, useRef, useReducer, useCallback} from "react";
+import {useRef, useReducer, useCallback, createContext, useMemo} from "react";
 
 const mockData = [ // 이런 고정된 mock data 는 컴포넌트 안에 있을 필요가 없으니 밖에다 설정
   {
@@ -32,8 +32,8 @@ function reducer(state, action){
       case "CREATE":
         return [action.data,...state] // action.data 을 추가 기존 데이터는 spread 연산자로 놔둠
       case "UPDATE":
-        return state.map((item) => 
-          item.id === action.targetId 
+        return state.map((item) =>
+          item.id === action.targetId
         ? {...item, isDone: !item.isDone} // targetId 가 있다면  item.isDone 을 ! 반전 시켜주기
         : item
       )
@@ -45,6 +45,9 @@ function reducer(state, action){
         return state;
       }
 }
+
+export const TodoStateContext = createContext();
+export const TodoDispatchContext = createContext();
 
 function App() {
 
@@ -62,13 +65,12 @@ function App() {
       }
     });
 
-    setTodos([newTodo,...todos]) // spread 문법으로 기존 todos 에 newTodo 추가
     // state 변수인 todos 는 무조건 setTodos 으로 값을 설정 변경해야함
 }, [])
 
 
 const onUpdate = useCallback((targetId) => {
-  // todos State의 값들 중에 
+  // todos State의 값들 중에
   // targetId 와 일치하는 id를 갖는 투두 아이템의 isDone 변경
   dispatch({
     type:"UPDATE",
@@ -85,11 +87,21 @@ const onUpdate = useCallback((targetId) => {
        });
   },[])
 
+  const memoizedDispatch = useMemo(() => { // useMemo 를 사용해 함수가 컴포넌트가 리렌더링
+    // 될때 마다 재성성 되는것을 막는다
+    return {onCreate, onDelete, onUpdate }
+  }, []);
+
   return (
     <div className='App'>
-    <Header/>
-    <Editor onCreate = {onCreate}/> 
-    <List todos = {todos} onUpdate ={onUpdate} onDelete ={onDelete}/>
+
+    <TodoStateContext.Provider value={todos}>
+      <TodoDispatchContext.Provider value={memoizedDispatch}>
+      <Editor/>
+      <List/>
+      </TodoDispatchContext.Provider>
+       <Header/>
+   </TodoStateContext.Provider>
     </div>
 
   );
